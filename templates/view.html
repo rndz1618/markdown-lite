@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }} · Markdown Lite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; }
+    .prose { max-width: 48rem; }
+    .prose pre { background: #1e293b; color: #e2e8f0; border-radius: 0.5rem; padding: 1rem; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; }
+    .prose code { font-family: 'JetBrains Mono', monospace; font-size: 0.875em; background: rgba(0,0,0,0.06); padding: 0.15em 0.35em; border-radius: 0.25rem; }
+    .prose pre code { background: transparent; padding: 0; }
+    .prose table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    .prose th, .prose td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; }
+    .dark .prose th, .dark .prose td { border-color: #374151; }
+    .prose h1, .prose h2, .prose h3 { font-weight: 600; margin-top: 1.5em; margin-bottom: 0.5em; }
+    .prose h1 { font-size: 1.875rem; }
+    .prose h2 { font-size: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; }
+    .dark .prose h2 { border-color: #374151; }
+    .prose blockquote { border-left: 4px solid #0ea5e9; padding-left: 1rem; color: #6b7280; margin: 1em 0; }
+    .prose ul, .prose ol { padding-left: 1.5rem; margin: 0.75em 0; }
+    .prose li { margin: 0.25em 0; }
+    .prose a { color: #0284c7; text-decoration: underline; }
+    .prose img { max-width: 100%; border-radius: 0.5rem; }
+  </style>
+</head>
+<body class="min-h-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+  <header class="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="/" class="text-sm text-brand-600 hover:underline">← Kembali</a>
+      <span class="text-sm font-medium text-gray-500">{{ path }}</span>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">Tema</button>
+  </header>
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <article class="prose dark:prose-invert">
+      {{ content | safe }}
+    </article>
+  </main>
+  <script>
+    if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+</body>
+</html>
