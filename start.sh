@@ -14,12 +14,23 @@ else
 fi
 
 if [ ! -f ".env" ]; then
-  echo "→ Membuat .env dari contoh..."
-  cp .env.example .env
-  echo "⚠  Edit file .env dan ganti password sebelum production!"
+  if [ -f ".env.example" ]; then
+    echo "→ Membuat .env dari .env.example..."
+    cp .env.example .env
+  else
+    echo "→ Membuat .env default..."
+    cat > .env << 'EOF'
+MD_ROOT=./data
+MD_USER=admin
+MD_PASS=changeme
+PORT=8080
+HOST=0.0.0.0
+ENABLE_AUTH=true
+EOF
+  fi
+  echo "⚠  Edit file .env dan ganti MD_PASS sebelum production!"
 fi
 
-# Create default data dir if using relative path
 mkdir -p data
 
 echo "→ Menjalankan Markdown Lite..."

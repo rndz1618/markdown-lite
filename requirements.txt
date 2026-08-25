@@ -1,5 +1,6 @@
-flask>=3.0.0
-gunicorn>=21.0.0
-python-dotenv>=1.0.0
-markdown>=3.5.0
-bleach>=6.0.0
+flask>=3.0.0,<4
+gunicorn>=21.0.0,<24
+python-dotenv>=1.0.0,<2
+markdown>=3.5.0,<4
+bleach>=6.0.0,<7
+Pygments>=2.15.0,<3
