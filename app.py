@@ -13,7 +13,16 @@ from functools import wraps
 from pathlib import Path
 from urllib.parse import unquote
 
-from flask import Flask, request, jsonify, render_template, abort, Response
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    render_template,
+    abort,
+    redirect,
+    url_for,
+    session,
+)
 from dotenv import load_dotenv
 import markdown
 import bleach
@@ -37,6 +46,9 @@ if not SECRET_KEY:
         "Sessions will reset on restart. Set SECRET_KEY in .env for production."
     )
 app.secret_key = SECRET_KEY
+app.config["PERMANENT_SESSION_LIFETIME"] = 60 * 60 * 24 * 7  # 7 days
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # Limit request body size (1 MB is plenty for Markdown notes)
 app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_CONTENT_LENGTH", 1 * 1024 * 1024))
@@ -54,9 +66,11 @@ if ENABLE_AUTH and PASSWORD in ("changeme", "password", "admin", ""):
         "INSECURE DEFAULT PASSWORD DETECTED. "
         "Set a strong MD_PASS in .env before running in production."
     )
+    # Soft fail in development; hard exit if FORCE_SECURE=1
     if os.environ.get("FORCE_SECURE", "").lower() in ("1", "true", "yes"):
         raise SystemExit("Refusing to start with default password (FORCE_SECURE=1).")
 
+# Allowed tags for safe HTML rendering (XSS protection)
 ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     "p", "pre", "code", "h1", "h2", "h3", "h4", "h5", "h6",
     "blockquote", "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
@@ -73,41 +87,41 @@ ALLOWED_ATTRS = {
     "th": ["align"],
 }
 
+# Ensure root exists
 MD_ROOT.mkdir(parents=True, exist_ok=True)
 
 
-def check_auth(username: str, password: str) -> bool:
+def check_credentials(username: str, password: str) -> bool:
     return secrets.compare_digest(username, USERNAME) and secrets.compare_digest(
         password, PASSWORD
     )
 
 
-def authenticate():
-    return Response(
-        "Authentication required.\n",
-        401,
-        {"WWW-Authenticate": 'Basic realm="Markdown Lite"'},
-    )
-
-
 def requires_auth(f):
+    """Session-based auth. Redirect HTML pages to /login; JSON APIs get 401."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if not ENABLE_AUTH:
             return f(*args, **kwargs)
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
+        if session.get("logged_in"):
+            return f(*args, **kwargs)
+        # API calls → JSON 401; page loads → redirect to login
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": "Unauthorized"}), 401
+        return redirect(url_for("login", next=request.path))
+
     return decorated
 
 
 def check_csrf():
-    """Lightweight CSRF check for state-changing requests."""
+    """Lightweight CSRF check for state-changing requests.
+    Accepts same-origin requests (Origin or Referer matching Host).
+    """
     if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
         return
     origin = request.headers.get("Origin") or request.headers.get("Referer")
     if not origin:
+        # Allow tools/scripts that send no Origin (curl, etc.) when using Basic Auth
         return
     host = request.host_url.rstrip("/")
     if not (origin == host or origin.startswith(host + "/")):
@@ -118,13 +132,16 @@ def safe_path(rel_path: str) -> Path:
     """Resolve path relative to MD_ROOT and prevent path traversal."""
     if not rel_path or rel_path in (".", "/"):
         return MD_ROOT
+
     rel_path = unquote(rel_path).lstrip("/").replace("\\", "/")
     parts = [p for p in rel_path.split("/") if p and p != ".." and p != "."]
     candidate = (MD_ROOT.joinpath(*parts)).resolve()
+
     try:
         candidate.relative_to(MD_ROOT)
     except ValueError:
         abort(403, description="Path outside allowed directory")
+
     return candidate
 
 
@@ -133,13 +150,17 @@ def is_md_file(path: Path) -> bool:
 
 
 def list_directory(rel: str = ""):
-    """Return sorted list of files and folders under relative path."""
+    """Return folders + Markdown files only (supported formats)."""
     base = safe_path(rel)
     if not base.is_dir():
         abort(404)
+
     items = []
     for entry in sorted(base.iterdir(), key=lambda e: (not e.is_dir(), e.name.lower())):
         if entry.name.startswith("."):
+            continue
+        # Only directories and supported Markdown extensions
+        if entry.is_file() and not is_md_file(entry):
             continue
         try:
             resolved = entry.resolve()
@@ -147,13 +168,15 @@ def list_directory(rel: str = ""):
         except (ValueError, OSError):
             continue
         rel_entry = str(entry.relative_to(MD_ROOT)).replace("\\", "/")
-        items.append({
-            "name": entry.name,
-            "path": rel_entry,
-            "is_dir": entry.is_dir(),
-            "size": entry.stat().st_size if entry.is_file() else 0,
-            "mtime": int(entry.stat().st_mtime),
-        })
+        items.append(
+            {
+                "name": entry.name,
+                "path": rel_entry,
+                "is_dir": entry.is_dir(),
+                "size": entry.stat().st_size if entry.is_file() else 0,
+                "mtime": int(entry.stat().st_mtime),
+            }
+        )
     return items
 
 
@@ -161,8 +184,17 @@ def render_md(content: str) -> str:
     """Convert Markdown to sanitized HTML."""
     html = markdown.markdown(
         content,
-        extensions=["fenced_code", "tables", "toc", "nl2br", "sane_lists", "codehilite"],
-        extension_configs={"codehilite": {"css_class": "highlight", "linenums": False}},
+        extensions=[
+            "fenced_code",
+            "tables",
+            "toc",
+            "nl2br",
+            "sane_lists",
+            "codehilite",
+        ],
+        extension_configs={
+            "codehilite": {"css_class": "highlight", "linenums": False}
+        },
     )
     return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
 
@@ -185,25 +217,68 @@ def atomic_write(path: Path, content: str) -> None:
 
 def get_json_body():
     """Parse JSON body safely (no force=True)."""
-    data = request.get_json(silent=True)
+    if not request.is_json and request.mimetype not in (
+        "application/json",
+        "text/json",
+    ):
+        # Still try silent parse for clients that forget Content-Type
+        data = request.get_json(silent=True)
+    else:
+        data = request.get_json(silent=True)
     return data or {}
 
 
+# ============== SECURITY HEADERS ==============
 @app.after_request
 def set_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # Basic CSP — allow CDN assets used by the UI
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://maxcdn.bootstrapcdn.com; "
+        "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com data:; "
         "img-src 'self' data: https:; "
         "connect-src 'self'"
     )
     return response
+
+
+# ============== ROUTES ==============
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if not ENABLE_AUTH:
+        return redirect(url_for("index"))
+    if session.get("logged_in"):
+        return redirect(url_for("index"))
+
+    error = None
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        if check_credentials(username, password):
+            session.clear()
+            session["logged_in"] = True
+            session["user"] = username
+            session.permanent = True
+            nxt = request.args.get("next") or request.form.get("next") or "/"
+            if not nxt.startswith("/") or nxt.startswith("//"):
+                nxt = "/"
+            return redirect(nxt)
+        error = "Username atau password salah."
+        log.warning("Failed login attempt for user=%s", username)
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout", methods=["POST", "GET"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 @app.route("/")
@@ -233,7 +308,14 @@ def api_read():
         return jsonify({"ok": False, "error": "Not a markdown file"}), 404
     try:
         content = target.read_text(encoding="utf-8")
-        return jsonify({"ok": True, "path": path, "content": content, "html": render_md(content)})
+        return jsonify(
+            {
+                "ok": True,
+                "path": path,
+                "content": content,
+                "html": render_md(content),
+            }
+        )
     except Exception:
         log.exception("read failed for path=%s", path)
         return jsonify({"ok": False, "error": "Failed to read file"}), 500
@@ -246,16 +328,20 @@ def api_save():
     data = get_json_body()
     path = (data.get("path") or "").strip()
     content = data.get("content", "")
+
     if not path:
         return jsonify({"ok": False, "error": "Path required"}), 400
     if not isinstance(content, str):
         return jsonify({"ok": False, "error": "Invalid content"}), 400
+
     target = safe_path(path)
     if target.exists() and target.is_dir():
         return jsonify({"ok": False, "error": "Path is a directory"}), 400
+
     if not is_md_file(target):
         target = target.with_suffix(".md")
         path = str(target.relative_to(MD_ROOT)).replace("\\", "/")
+
     try:
         atomic_write(target, content)
         return jsonify({"ok": True, "path": path, "message": "Saved"})
@@ -271,11 +357,14 @@ def api_create():
     data = get_json_body()
     path = (data.get("path") or "").strip()
     is_dir = bool(data.get("is_dir", False))
+
     if not path:
         return jsonify({"ok": False, "error": "Path required"}), 400
+
     target = safe_path(path)
     if target.exists():
         return jsonify({"ok": False, "error": "Already exists"}), 400
+
     try:
         if is_dir:
             target.mkdir(parents=True, exist_ok=False)
@@ -298,9 +387,11 @@ def api_delete():
     path = (data.get("path") or "").strip()
     if not path:
         return jsonify({"ok": False, "error": "Path required"}), 400
+
     target = safe_path(path)
     if target == MD_ROOT:
         return jsonify({"ok": False, "error": "Cannot delete root"}), 400
+
     try:
         if target.is_dir():
             if any(target.iterdir()):
@@ -324,21 +415,27 @@ def api_rename():
     data = get_json_body()
     old_path = (data.get("old_path") or "").strip()
     new_name = (data.get("new_name") or "").strip()
+
     if not old_path or not new_name:
         return jsonify({"ok": False, "error": "old_path and new_name required"}), 400
+
     new_name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", new_name).strip()
     if not new_name:
         return jsonify({"ok": False, "error": "Invalid name"}), 400
+
     old = safe_path(old_path)
     if not old.exists() or old == MD_ROOT:
         return jsonify({"ok": False, "error": "Not found"}), 404
+
     new = old.parent / new_name
     try:
         new.resolve().relative_to(MD_ROOT)
     except ValueError:
         return jsonify({"ok": False, "error": "Invalid target"}), 403
+
     if new.exists():
         return jsonify({"ok": False, "error": "Target already exists"}), 400
+
     try:
         old.rename(new)
         rel = str(new.relative_to(MD_ROOT)).replace("\\", "/")
@@ -351,6 +448,7 @@ def api_rename():
 @app.route("/view/<path:filepath>")
 @requires_auth
 def view_file(filepath):
+    """Server-side rendered view (fallback / shareable)."""
     target = safe_path(filepath)
     if not target.is_file() or not is_md_file(target):
         abort(404)
@@ -361,6 +459,7 @@ def view_file(filepath):
 
 @app.route("/health")
 def health():
+    # Do not leak storage path
     return jsonify({"status": "ok"})
 
 
