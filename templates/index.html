@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown Lite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- EasyMDE -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+  <!-- marked + DOMPurify for client preview safety -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: Inter, system-ui, sans-serif; }
+    .EasyMDEContainer .CodeMirror { height: 100% !important; border: none; background: transparent; font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+    .EasyMDEContainer { height: 100%; display: flex; flex-direction: column; }
+    .EasyMDEContainer .editor-toolbar { border: none; border-bottom: 1px solid #e5e7eb; background: transparent; }
+    .dark .EasyMDEContainer .editor-toolbar { border-color: #374151; }
+    .dark .EasyMDEContainer .CodeMirror { color: #e5e7eb; }
+    .dark .EasyMDEContainer .editor-toolbar button { color: #d1d5db; }
+    .dark .EasyMDEContainer .editor-toolbar button:hover, .dark .EasyMDEContainer .editor-toolbar button.active { background: #374151; border-color: #4b5563; }
+    .dark .EasyMDEContainer .editor-preview, .dark .EasyMDEContainer .editor-preview-side { background: #111827; color: #e5e7eb; }
+    .prose pre { background: #1e293b; color: #e2e8f0; border-radius: 0.5rem; padding: 1rem; overflow-x: auto; }
+    .prose code { font-family: 'JetBrains Mono', monospace; font-size: 0.875em; }
+    .prose table { border-collapse: collapse; width: 100%; }
+    .prose th, .prose td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; }
+    .dark .prose th, .dark .prose td { border-color: #374151; }
+    .sidebar-item:hover { background: rgba(14,165,233,0.08); }
+    .sidebar-item.active { background: rgba(14,165,233,0.15); color: #0284c7; }
+    .dark .sidebar-item.active { color: #38bdf8; }
+    #preview.prose { max-width: none; }
+    .resizer { width: 4px; cursor: col-resize; background: transparent; transition: background .15s; }
+    .resizer:hover, .resizer.active { background: #0ea5e9; }
+    .toast { animation: slideIn .25s ease; }
+    @keyframes slideIn { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body class="h-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors">
+  <div id="app" class="h-full flex flex-col">
+    <!-- Top bar -->
+    <header class="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur sticky top-0 z-20">
+      <div class="flex items-center gap-3">
+        <button id="btn-toggle-sidebar" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Toggle sidebar">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold text-sm">M</div>
+          <span class="font-semibold text-sm hidden sm:inline">Markdown Lite</span>
+        </div>
+        <span id="current-path" class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px] sm:max-w-md"></span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button id="btn-new-file" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition" title="File baru">+ File</button>
+        <button id="btn-new-folder" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Folder baru">+ Folder</button>
+        <button id="btn-save" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40" disabled title="Simpan (Ctrl+S)">Simpan</button>
+        <button id="btn-theme" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Toggle tema">
+          <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Sidebar -->
+      <aside id="sidebar" class="w-64 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col transition-all duration-200">
+        <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+          <input id="search-input" type="text" placeholder="Cari file..." class="w-full px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div id="file-list" class="flex-1 overflow-y-auto p-1 text-sm"></div>
+        <div class="p-2 border-t border-gray-100 dark:border-gray-700 text-[10px] text-gray-400 text-center">
+          Markdown Lite · ringan & aman
+        </div>
+      </aside>
+
+      <!-- Resizer -->
+      <div id="resizer" class="resizer hidden sm:block"></div>
+
+      <!-- Main editor area -->
+      <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900">
+        <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
+          <svg class="w-16 h-16 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <p class="text-lg font-medium">Pilih atau buat file Markdown</p>
+          <p class="text-sm mt-1">Gunakan tombol + File di atas atau klik file di sidebar</p>
+        </div>
+
+        <div id="editor-wrap" class="hidden flex-1 flex flex-col min-h-0">
+          <textarea id="editor"></textarea>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+  <!-- Modal -->
+  <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-4 p-5">
+      <h3 id="modal-title" class="font-semibold text-lg mb-3"></h3>
+      <input id="modal-input" type="text" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 mb-4" />
+      <div class="flex justify-end gap-2">
+        <button id="modal-cancel" class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Batal</button>
+        <button id="modal-ok" class="px-3 py-1.5 text-sm rounded-lg bg-brand-500 text-white hover:bg-brand-600">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== State =====
+    let currentPath = '';
+    let currentDir = '';
+    let dirty = false;
+    let easyMDE = null;
+    let allItems = [];
+
+    // ===== Theme =====
+    function initTheme() {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    }
+    document.getElementById('btn-theme').onclick = () => {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    };
+    initTheme();
+
+    // ===== Toast =====
+    function toast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white ${type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-emerald-500' : 'bg-gray-800'}`;
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 2800);
+    }
+
+    // ===== Modal =====
+    function showModal(title, placeholder, defaultVal = '') {
+      return new Promise(resolve => {
+        const modal = document.getElementById('modal');
+        const input = document.getElementById('modal-input');
+        document.getElementById('modal-title').textContent = title;
+        input.placeholder = placeholder;
+        input.value = defaultVal;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        input.focus();
+        const ok = () => { cleanup(); resolve(input.value.trim()); };
+        const cancel = () => { cleanup(); resolve(null); };
+        function cleanup() {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+          document.getElementById('modal-ok').onclick = null;
+          document.getElementById('modal-cancel').onclick = null;
+          input.onkeydown = null;
+        }
+        document.getElementById('modal-ok').onclick = ok;
+        document.getElementById('modal-cancel').onclick = cancel;
+        input.onkeydown = e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') cancel(); };
+      });
+    }
+
+    // ===== API helpers =====
+    async function api(url, opts = {}) {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+        ...opts
+      });
+      return res.json();
+    }
+
+    // ===== File list =====
+    async function loadList(dir = '') {
+      currentDir = dir;
+      const data = await api(`/api/list?path=${encodeURIComponent(dir)}`);
+      if (!data.ok) { toast(data.error || 'Gagal load', 'error'); return; }
+      allItems = data.items;
+      renderList(allItems);
+    }
+
+    function renderList(items) {
+      const container = document.getElementById('file-list');
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const filtered = q ? items.filter(i => i.name.toLowerCase().includes(q)) : items;
+
+      let html = '';
+      if (currentDir) {
+        const parent = currentDir.split('/').slice(0, -1).join('/');
+        html += `<div class="sidebar-item flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-gray-500" data-action="up" data-path="${parent}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          ..
+        </div>`;
+      }
+
+      for (const item of filtered) {
+        const isActive = item.path === currentPath;
+        const icon = item.is_dir
+          ? `<svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>`
+          : `<svg class="w-4 h-4 text-brand-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
+        html += `<div class="sidebar-item group flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer ${isActive ? 'active' : ''}" data-path="${item.path}" data-isdir="${item.is_dir}">
+          ${icon}
+          <span class="truncate flex-1">${item.name}</span>
+          <button class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500" data-action="delete" data-path="${item.path}" title="Hapus">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>`;
+      }
+      container.innerHTML = html || '<p class="text-center text-gray-400 py-6 text-xs">Kosong</p>';
+
+      container.querySelectorAll('[data-path]').forEach(el => {
+        el.addEventListener('click', e => {
+          if (e.target.closest('[data-action="delete"]')) return;
+          const path = el.dataset.path;
+          const isDir = el.dataset.isdir === 'true';
+          const action = el.dataset.action;
+          if (action === 'up') { loadList(path); return; }
+          if (isDir) loadList(path);
+          else openFile(path);
+        });
+      });
+      container.querySelectorAll('[data-action="delete"]').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const path = btn.dataset.path;
+          if (!confirm(`Hapus "${path}"?`)) return;
+          const res = await api('/api/delete', { method: 'POST', body: JSON.stringify({ path }) });
+          if (res.ok) { toast('Dihapus', 'success'); if (currentPath === path) closeFile(); loadList(currentDir); }
+          else toast(res.error || 'Gagal', 'error');
+        });
+      });
+    }
+
+    document.getElementById('search-input').oninput = () => renderList(allItems);
+
+    // ===== Editor =====
+    function initEditor() {
+      if (easyMDE) return;
+      easyMDE = new EasyMDE({
+        element: document.getElementById('editor'),
+        autofocus: true,
+        spellChecker: false,
+        status: false,
+        toolbar: [
+          'bold', 'italic', 'heading', '|',
+          'quote', 'unordered-list', 'ordered-list', '|',
+          'link', 'image', 'table', 'code', '|',
+          'preview', 'side-by-side', 'fullscreen', '|',
+          'guide'
+        ],
+        placeholder: 'Tulis Markdown di sini...',
+        renderingConfig: { singleLineBreaks: false, codeSyntaxHighlighting: true },
+        previewRender: (text) => DOMPurify.sanitize(marked.parse(text || '')),
+      });
+      easyMDE.codemirror.on('change', () => {
+        dirty = true;
+        document.getElementById('btn-save').disabled = false;
+      });
+    }
+
+    async function openFile(path) {
+      if (dirty && !confirm('Perubahan belum disimpan. Lanjutkan?')) return;
+      const data = await api(`/api/read?path=${encodeURIComponent(path)}`);
+      if (!data.ok) { toast(data.error || 'Gagal baca', 'error'); return; }
+
+      currentPath = path;
+      document.getElementById('current-path').textContent = path;
+      document.getElementById('empty-state').classList.add('hidden');
+      document.getElementById('editor-wrap').classList.remove('hidden');
+
+      initEditor();
+      easyMDE.value(data.content);
+      dirty = false;
+      document.getElementById('btn-save').disabled = true;
+      renderList(allItems); // refresh active state
+    }
+
+    function closeFile() {
+      currentPath = '';
+      dirty = false;
+      document.getElementById('current-path').textContent = '';
+      document.getElementById('empty-state').classList.remove('hidden');
+      document.getElementById('editor-wrap').classList.add('hidden');
+      document.getElementById('btn-save').disabled = true;
+      if (easyMDE) easyMDE.value('');
+    }
+
+    async function saveFile() {
+      if (!currentPath || !easyMDE) return;
+      const content = easyMDE.value();
+      const res = await api('/api/save', {
+        method: 'POST',
+        body: JSON.stringify({ path: currentPath, content })
+      });
+      if (res.ok) {
+        dirty = false;
+        document.getElementById('btn-save').disabled = true;
+        toast('Tersimpan', 'success');
+      } else toast(res.error || 'Gagal simpan', 'error');
+    }
+
+    // ===== New file / folder =====
+    document.getElementById('btn-new-file').onclick = async () => {
+      const name = await showModal('File baru', 'nama-file.md');
+      if (!name) return;
+      const path = currentDir ? `${currentDir}/${name}` : name;
+      const res = await api('/api/create', { method: 'POST', body: JSON.stringify({ path, is_dir: false }) });
+      if (res.ok) { toast('File dibuat', 'success'); loadList(currentDir); openFile(res.path); }
+      else toast(res.error || 'Gagal', 'error');
+    };
+
+    document.getElementById('btn-new-folder').onclick = async () => {
+      const name = await showModal('Folder baru', 'nama-folder');
+      if (!name) return;
+      const path = currentDir ? `${currentDir}/${name}` : name;
+      const res = await api('/api/create', { method: 'POST', body: JSON.stringify({ path, is_dir: true }) });
+      if (res.ok) { toast('Folder dibuat', 'success'); loadList(currentDir); }
+      else toast(res.error || 'Gagal', 'error');
+    };
+
+    document.getElementById('btn-save').onclick = saveFile;
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveFile();
+      }
+    });
+
+    // Sidebar toggle
+    document.getElementById('btn-toggle-sidebar').onclick = () => {
+      const sb = document.getElementById('sidebar');
+      sb.classList.toggle('hidden');
+    };
+
+    // Resizer
+    (function() {
+      const resizer = document.getElementById('resizer');
+      const sidebar = document.getElementById('sidebar');
+      let startX, startW;
+      resizer.addEventListener('mousedown', e => {
+        startX = e.clientX;
+        startW = sidebar.offsetWidth;
+        resizer.classList.add('active');
+        const onMove = e => {
+          const w = Math.min(Math.max(startW + e.clientX - startX, 180), 420);
+          sidebar.style.width = w + 'px';
+        };
+        const onUp = () => {
+          resizer.classList.remove('active');
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    })();
+
+    // Init
+    loadList();
+  </script>
+</body>
+</html>
