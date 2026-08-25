@@ -23,6 +23,8 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Font Awesome 4 (wajib untuk ikon toolbar EasyMDE: fa fa-bold, dll.) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
   <!-- EasyMDE -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
   <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
@@ -32,14 +34,108 @@
   <style>
     :root { color-scheme: light dark; }
     body { font-family: Inter, system-ui, sans-serif; }
-    .EasyMDEContainer .CodeMirror { height: 100% !important; border: none; background: transparent; font-family: 'JetBrains Mono', monospace; font-size: 14px; }
-    .EasyMDEContainer { height: 100%; display: flex; flex-direction: column; }
-    .EasyMDEContainer .editor-toolbar { border: none; border-bottom: 1px solid #e5e7eb; background: transparent; }
-    .dark .EasyMDEContainer .editor-toolbar { border-color: #374151; }
+
+    /* EasyMDE layout — toolbar always visible */
+    #editor-wrap { display: flex; flex-direction: column; min-height: 0; }
+    #editor-wrap.hidden { display: none !important; }
+    .EasyMDEContainer {
+      display: flex !important;
+      flex-direction: column !important;
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100% !important;
+      border: none !important;
+    }
+    .EasyMDEContainer .editor-toolbar {
+      flex: 0 0 auto !important;
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      height: auto !important;
+      min-height: 38px !important;
+      border: none !important;
+      border-bottom: 1px solid #e5e7eb !important;
+      background: #f8fafc !important;
+      padding: 6px 8px !important;
+      z-index: 5;
+      overflow: visible !important;
+    }
+    .EasyMDEContainer .editor-toolbar button {
+      display: inline-block !important;
+      color: #334155 !important;
+      opacity: 1 !important;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      margin: 0 1px;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      text-align: center;
+      vertical-align: middle;
+      background: transparent;
+      cursor: pointer;
+    }
+    .EasyMDEContainer .editor-toolbar button i.fa {
+      display: inline-block !important;
+      font-family: FontAwesome !important;
+      font-style: normal;
+      font-weight: normal;
+      font-size: 14px;
+      line-height: 1;
+      color: inherit;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    .EasyMDEContainer .editor-toolbar i.separator {
+      display: inline-block !important;
+      width: 0;
+      border-left: 1px solid #cbd5e1;
+      border-right: 1px solid #fff;
+      margin: 0 6px;
+      color: transparent;
+    }
+    .EasyMDEContainer .editor-toolbar button:hover,
+    .EasyMDEContainer .editor-toolbar button.active {
+      background: #e2e8f0 !important;
+      border-color: #cbd5e1 !important;
+    }
+    .EasyMDEContainer .CodeMirror {
+      flex: 1 1 auto !important;
+      height: auto !important;
+      min-height: 200px !important;
+      border: none !important;
+      background: transparent !important;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 14px;
+    }
+    .EasyMDEContainer .CodeMirror-scroll {
+      min-height: 200px;
+    }
+    .EasyMDEContainer .editor-preview,
+    .EasyMDEContainer .editor-preview-side {
+      background: #fff;
+    }
+    .dark .EasyMDEContainer .editor-toolbar {
+      border-color: #374151 !important;
+      background: #1f2937 !important;
+    }
+    .dark .EasyMDEContainer .editor-toolbar button,
+    .dark .EasyMDEContainer .editor-toolbar i.separator {
+      color: #e5e7eb !important;
+    }
+    .dark .EasyMDEContainer .editor-toolbar button:hover,
+    .dark .EasyMDEContainer .editor-toolbar button.active {
+      background: #374151 !important;
+      border-color: #4b5563 !important;
+    }
     .dark .EasyMDEContainer .CodeMirror { color: #e5e7eb; }
-    .dark .EasyMDEContainer .editor-toolbar button { color: #d1d5db; }
-    .dark .EasyMDEContainer .editor-toolbar button:hover, .dark .EasyMDEContainer .editor-toolbar button.active { background: #374151; border-color: #4b5563; }
-    .dark .EasyMDEContainer .editor-preview, .dark .EasyMDEContainer .editor-preview-side { background: #111827; color: #e5e7eb; }
+    .dark .EasyMDEContainer .editor-preview,
+    .dark .EasyMDEContainer .editor-preview-side {
+      background: #111827;
+      color: #e5e7eb;
+    }
+
     .prose pre { background: #1e293b; color: #e2e8f0; border-radius: 0.5rem; padding: 1rem; overflow-x: auto; }
     .prose code { font-family: 'JetBrains Mono', monospace; font-size: 0.875em; }
     .prose table { border-collapse: collapse; width: 100%; }
@@ -48,7 +144,6 @@
     .sidebar-item:hover { background: rgba(14,165,233,0.08); }
     .sidebar-item.active { background: rgba(14,165,233,0.15); color: #0284c7; }
     .dark .sidebar-item.active { color: #38bdf8; }
-    #preview.prose { max-width: none; }
     .resizer { width: 4px; cursor: col-resize; background: transparent; transition: background .15s; }
     .resizer:hover, .resizer.active { background: #0ea5e9; }
     .toast { animation: slideIn .25s ease; }
@@ -57,7 +152,6 @@
 </head>
 <body class="h-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors">
   <div id="app" class="h-full flex flex-col">
-    <!-- Top bar -->
     <header class="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur sticky top-0 z-20">
       <div class="flex items-center gap-3">
         <button id="btn-toggle-sidebar" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Toggle sidebar">
@@ -77,25 +171,23 @@
           <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
           <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
         </button>
+        <a href="/logout" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition" title="Keluar">Keluar</a>
       </div>
     </header>
 
     <div class="flex-1 flex overflow-hidden">
-      <!-- Sidebar -->
       <aside id="sidebar" class="w-64 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col transition-all duration-200">
         <div class="p-2 border-b border-gray-100 dark:border-gray-700">
           <input id="search-input" type="text" placeholder="Cari file..." class="w-full px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500" />
         </div>
         <div id="file-list" class="flex-1 overflow-y-auto p-1 text-sm"></div>
         <div class="p-2 border-t border-gray-100 dark:border-gray-700 text-[10px] text-gray-400 text-center">
-          Markdown Lite · ringan & aman
+          Markdown Lite · ringan &amp; aman
         </div>
       </aside>
 
-      <!-- Resizer -->
       <div id="resizer" class="resizer hidden sm:block"></div>
 
-      <!-- Main editor area -->
       <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900">
         <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
           <svg class="w-16 h-16 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -110,10 +202,8 @@
     </div>
   </div>
 
-  <!-- Toast -->
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
-  <!-- Modal -->
   <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-4 p-5">
       <h3 id="modal-title" class="font-semibold text-lg mb-3"></h3>
@@ -126,14 +216,18 @@
   </div>
 
   <script>
-    // ===== State =====
     let currentPath = '';
     let currentDir = '';
     let dirty = false;
     let easyMDE = null;
     let allItems = [];
 
-    // ===== Theme =====
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[c]);
+    }
+
     function initTheme() {
       const saved = localStorage.getItem('theme');
       if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -146,7 +240,6 @@
     };
     initTheme();
 
-    // ===== Toast =====
     function toast(msg, type = 'info') {
       const el = document.createElement('div');
       el.className = `toast px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white ${type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-emerald-500' : 'bg-gray-800'}`;
@@ -155,7 +248,6 @@
       setTimeout(() => el.remove(), 2800);
     }
 
-    // ===== Modal =====
     function showModal(title, placeholder, defaultVal = '') {
       return new Promise(resolve => {
         const modal = document.getElementById('modal');
@@ -181,16 +273,19 @@
       });
     }
 
-    // ===== API helpers =====
     async function api(url, opts = {}) {
       const res = await fetch(url, {
         headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+        credentials: 'same-origin',
         ...opts
       });
+      if (res.status === 401) {
+        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+        return { ok: false, error: 'Unauthorized' };
+      }
       return res.json();
     }
 
-    // ===== File list =====
     async function loadList(dir = '') {
       currentDir = dir;
       const data = await api(`/api/list?path=${encodeURIComponent(dir)}`);
@@ -207,7 +302,7 @@
       let html = '';
       if (currentDir) {
         const parent = currentDir.split('/').slice(0, -1).join('/');
-        html += `<div class="sidebar-item flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-gray-500" data-action="up" data-path="${parent}">
+        html += `<div class="sidebar-item flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-gray-500" data-action="up" data-path="${esc(parent)}">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
           ..
         </div>`;
@@ -215,13 +310,14 @@
 
       for (const item of filtered) {
         const isActive = item.path === currentPath;
+        const safePath = esc(item.path);
         const icon = item.is_dir
           ? `<svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>`
           : `<svg class="w-4 h-4 text-brand-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
-        html += `<div class="sidebar-item group flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer ${isActive ? 'active' : ''}" data-path="${item.path}" data-isdir="${item.is_dir}">
+        html += `<div class="sidebar-item group flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer ${isActive ? 'active' : ''}" data-path="${safePath}" data-isdir="${item.is_dir}">
           ${icon}
-          <span class="truncate flex-1">${item.name}</span>
-          <button class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500" data-action="delete" data-path="${item.path}" title="Hapus">
+          <span class="truncate flex-1">${esc(item.name)}</span>
+          <button class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500" data-action="delete" data-path="${safePath}" title="Hapus">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>`;
@@ -253,18 +349,19 @@
 
     document.getElementById('search-input').oninput = () => renderList(allItems);
 
-    // ===== Editor =====
     function initEditor() {
       if (easyMDE) return;
       easyMDE = new EasyMDE({
         element: document.getElementById('editor'),
         autofocus: true,
         spellChecker: false,
-        status: false,
+        autoDownloadFontAwesome: false,
+        status: ['lines', 'words', 'cursor'],
+        minHeight: '300px',
         toolbar: [
-          'bold', 'italic', 'heading', '|',
+          'bold', 'italic', 'strikethrough', 'heading', '|',
           'quote', 'unordered-list', 'ordered-list', '|',
-          'link', 'image', 'table', 'code', '|',
+          'link', 'image', 'table', 'code', 'horizontal-rule', '|',
           'preview', 'side-by-side', 'fullscreen', '|',
           'guide'
         ],
@@ -276,6 +373,9 @@
         dirty = true;
         document.getElementById('btn-save').disabled = false;
       });
+      setTimeout(() => {
+        if (easyMDE && easyMDE.codemirror) easyMDE.codemirror.refresh();
+      }, 50);
     }
 
     async function openFile(path) {
@@ -292,7 +392,7 @@
       easyMDE.value(data.content);
       dirty = false;
       document.getElementById('btn-save').disabled = true;
-      renderList(allItems); // refresh active state
+      renderList(allItems);
     }
 
     function closeFile() {
@@ -319,7 +419,6 @@
       } else toast(res.error || 'Gagal simpan', 'error');
     }
 
-    // ===== New file / folder =====
     document.getElementById('btn-new-file').onclick = async () => {
       const name = await showModal('File baru', 'nama-file.md');
       if (!name) return;
@@ -340,7 +439,6 @@
 
     document.getElementById('btn-save').onclick = saveFile;
 
-    // Keyboard
     document.addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
@@ -348,13 +446,10 @@
       }
     });
 
-    // Sidebar toggle
     document.getElementById('btn-toggle-sidebar').onclick = () => {
-      const sb = document.getElementById('sidebar');
-      sb.classList.toggle('hidden');
+      document.getElementById('sidebar').classList.toggle('hidden');
     };
 
-    // Resizer
     (function() {
       const resizer = document.getElementById('resizer');
       const sidebar = document.getElementById('sidebar');
@@ -377,7 +472,6 @@
       });
     })();
 
-    // Init
     loadList();
   </script>
 </body>
