@@ -7,10 +7,16 @@ cd "$(dirname "$0")"
 if [ ! -d "venv" ]; then
   echo "→ Membuat virtual environment..."
   python3 -m venv venv
-  source venv/bin/activate
+fi
+
+# shellcheck disable=SC1091
+source venv/bin/activate
+
+# Pastikan dependensi terpasang (juga saat venv sudah ada tapi kosong)
+if ! python -c "import flask" 2>/dev/null; then
+  echo "→ Menginstal dependensi Python..."
+  pip install --upgrade pip
   pip install -r requirements.txt
-else
-  source venv/bin/activate
 fi
 
 if [ ! -f ".env" ]; then
