@@ -66,11 +66,9 @@ if ENABLE_AUTH and PASSWORD in ("changeme", "password", "admin", ""):
         "INSECURE DEFAULT PASSWORD DETECTED. "
         "Set a strong MD_PASS in .env before running in production."
     )
-    # Soft fail in development; hard exit if FORCE_SECURE=1
     if os.environ.get("FORCE_SECURE", "").lower() in ("1", "true", "yes"):
         raise SystemExit("Refusing to start with default password (FORCE_SECURE=1).")
 
-# Allowed tags for safe HTML rendering (XSS protection)
 ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     "p", "pre", "code", "h1", "h2", "h3", "h4", "h5", "h6",
     "blockquote", "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
@@ -87,8 +85,49 @@ ALLOWED_ATTRS = {
     "th": ["align"],
 }
 
-# Ensure root exists
 MD_ROOT.mkdir(parents=True, exist_ok=True)
+
+BUILTIN_TEMPLATES = {
+    "blank": {"name": "Kosong", "body": "# {{title}}\n\n"},
+    "catatan": {
+        "name": "Catatan harian",
+        "body": (
+            "# {{title}}\n\n"
+            "> Tanggal: {{date}}\n\n"
+            "## Ringkasan\n\n"
+            "- \n\n"
+            "## Detail\n\n"
+        ),
+    },
+    "rapat": {
+        "name": "Notulen rapat",
+        "body": (
+            "# {{title}}\n\n"
+            "- **Tanggal:** {{date}}\n"
+            "- **Peserta:** \n"
+            "- **Agenda:** \n\n"
+            "## Pembahasan\n\n"
+            "1. \n\n"
+            "## Keputusan\n\n"
+            "- \n\n"
+            "## Tindak lanjut\n\n"
+            "| Item | PIC | Deadline |\n"
+            "| --- | --- | --- |\n"
+            "|  |  |  |\n"
+        ),
+    },
+    "todo": {
+        "name": "Daftar tugas",
+        "body": (
+            "# {{title}}\n\n"
+            "- [ ] Tugas 1\n"
+            "- [ ] Tugas 2\n"
+            "- [ ] Tugas 3\n"
+        ),
+    },
+}
+TEMPLATES_DIR_NAME = "_templates"
+SUPPORTED_EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
 
 
 def check_credentials(username: str, password: str) -> bool:
@@ -98,30 +137,23 @@ def check_credentials(username: str, password: str) -> bool:
 
 
 def requires_auth(f):
-    """Session-based auth. Redirect HTML pages to /login; JSON APIs get 401."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if not ENABLE_AUTH:
             return f(*args, **kwargs)
         if session.get("logged_in"):
             return f(*args, **kwargs)
-        # API calls → JSON 401; page loads → redirect to login
         if request.path.startswith("/api/"):
             return jsonify({"ok": False, "error": "Unauthorized"}), 401
         return redirect(url_for("login", next=request.path))
-
     return decorated
 
 
 def check_csrf():
-    """Lightweight CSRF check for state-changing requests.
-    Accepts same-origin requests (Origin or Referer matching Host).
-    """
     if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
         return
     origin = request.headers.get("Origin") or request.headers.get("Referer")
     if not origin:
-        # Allow tools/scripts that send no Origin (curl, etc.) when using Basic Auth
         return
     host = request.host_url.rstrip("/")
     if not (origin == host or origin.startswith(host + "/")):
@@ -129,78 +161,103 @@ def check_csrf():
 
 
 def safe_path(rel_path: str) -> Path:
-    """Resolve path relative to MD_ROOT and prevent path traversal."""
     if not rel_path or rel_path in (".", "/"):
         return MD_ROOT
-
     rel_path = unquote(rel_path).lstrip("/").replace("\\", "/")
     parts = [p for p in rel_path.split("/") if p and p != ".." and p != "."]
     candidate = (MD_ROOT.joinpath(*parts)).resolve()
-
     try:
         candidate.relative_to(MD_ROOT)
     except ValueError:
         abort(403, description="Path outside allowed directory")
-
     return candidate
 
 
 def is_md_file(path: Path) -> bool:
-    return path.suffix.lower() in (".md", ".markdown", ".mdown", ".mkd")
+    if not path.is_file():
+        return False
+    return path.suffix.lower() in SUPPORTED_EXTENSIONS
+
+
+def list_templates():
+    items = [
+        {"id": tid, "name": meta["name"], "source": "builtin"}
+        for tid, meta in BUILTIN_TEMPLATES.items()
+    ]
+    tdir = MD_ROOT / TEMPLATES_DIR_NAME
+    if tdir.is_dir():
+        for entry in sorted(tdir.iterdir(), key=lambda e: e.name.lower()):
+            if entry.is_file() and is_md_file(entry):
+                items.append({
+                    "id": f"custom:{entry.stem}",
+                    "name": entry.stem.replace("-", " ").replace("_", " ").title(),
+                    "source": "custom",
+                })
+    return items
+
+
+def resolve_template_body(template_id: str, title: str) -> str:
+    from datetime import date
+    date_str = date.today().isoformat()
+    body = None
+    if template_id and template_id.startswith("custom:"):
+        stem = re.sub(r"[^a-zA-Z0-9_\-]", "", template_id.split(":", 1)[1])
+        candidate = (MD_ROOT / TEMPLATES_DIR_NAME / f"{stem}.md").resolve()
+        try:
+            candidate.relative_to((MD_ROOT / TEMPLATES_DIR_NAME).resolve())
+            if candidate.is_file():
+                body = candidate.read_text(encoding="utf-8")
+        except (ValueError, OSError):
+            body = None
+    elif template_id in BUILTIN_TEMPLATES:
+        body = BUILTIN_TEMPLATES[template_id]["body"]
+    if body is None:
+        body = BUILTIN_TEMPLATES["blank"]["body"]
+    return body.replace("{{title}}", title).replace("{{date}}", date_str)
 
 
 def list_directory(rel: str = ""):
-    """Return folders + Markdown files only (supported formats)."""
+    """Hanya folder + file Markdown yang didukung."""
     base = safe_path(rel)
     if not base.is_dir():
         abort(404)
-
     items = []
     for entry in sorted(base.iterdir(), key=lambda e: (not e.is_dir(), e.name.lower())):
-        if entry.name.startswith("."):
+        name = entry.name
+        if name.startswith(".") or name.startswith("__"):
             continue
-        # Only directories and supported Markdown extensions
-        if entry.is_file() and not is_md_file(entry):
+        if entry.is_dir() and name in (TEMPLATES_DIR_NAME, "venv", "node_modules"):
+            continue
+        if entry.is_file():
+            if not is_md_file(entry):
+                continue
+        elif not entry.is_dir():
             continue
         try:
-            resolved = entry.resolve()
-            resolved.relative_to(MD_ROOT)
+            entry.resolve().relative_to(MD_ROOT)
         except (ValueError, OSError):
             continue
         rel_entry = str(entry.relative_to(MD_ROOT)).replace("\\", "/")
-        items.append(
-            {
-                "name": entry.name,
-                "path": rel_entry,
-                "is_dir": entry.is_dir(),
-                "size": entry.stat().st_size if entry.is_file() else 0,
-                "mtime": int(entry.stat().st_mtime),
-            }
-        )
+        try:
+            st = entry.stat()
+            size = st.st_size if entry.is_file() else 0
+            mtime = int(st.st_mtime)
+        except OSError:
+            size, mtime = 0, 0
+        items.append({"name": name, "path": rel_entry, "is_dir": entry.is_dir(), "size": size, "mtime": mtime})
     return items
 
 
 def render_md(content: str) -> str:
-    """Convert Markdown to sanitized HTML."""
     html = markdown.markdown(
         content,
-        extensions=[
-            "fenced_code",
-            "tables",
-            "toc",
-            "nl2br",
-            "sane_lists",
-            "codehilite",
-        ],
-        extension_configs={
-            "codehilite": {"css_class": "highlight", "linenums": False}
-        },
+        extensions=["fenced_code", "tables", "toc", "nl2br", "sane_lists", "codehilite"],
+        extension_configs={"codehilite": {"css_class": "highlight", "linenums": False}},
     )
     return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
 
 
 def atomic_write(path: Path, content: str) -> None:
-    """Write file atomically: temp file in same dir, then os.replace."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
     try:
@@ -216,26 +273,16 @@ def atomic_write(path: Path, content: str) -> None:
 
 
 def get_json_body():
-    """Parse JSON body safely (no force=True)."""
-    if not request.is_json and request.mimetype not in (
-        "application/json",
-        "text/json",
-    ):
-        # Still try silent parse for clients that forget Content-Type
-        data = request.get_json(silent=True)
-    else:
-        data = request.get_json(silent=True)
+    data = request.get_json(silent=True)
     return data or {}
 
 
-# ============== SECURITY HEADERS ==============
 @app.after_request
 def set_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    # Basic CSP — allow CDN assets used by the UI
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
@@ -247,15 +294,12 @@ def set_security_headers(response):
     return response
 
 
-# ============== ROUTES ==============
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if not ENABLE_AUTH:
         return redirect(url_for("index"))
     if session.get("logged_in"):
         return redirect(url_for("index"))
-
     error = None
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
@@ -271,7 +315,6 @@ def login():
             return redirect(nxt)
         error = "Username atau password salah."
         log.warning("Failed login attempt for user=%s", username)
-
     return render_template("login.html", error=error)
 
 
@@ -308,14 +351,7 @@ def api_read():
         return jsonify({"ok": False, "error": "Not a markdown file"}), 404
     try:
         content = target.read_text(encoding="utf-8")
-        return jsonify(
-            {
-                "ok": True,
-                "path": path,
-                "content": content,
-                "html": render_md(content),
-            }
-        )
+        return jsonify({"ok": True, "path": path, "content": content, "html": render_md(content)})
     except Exception:
         log.exception("read failed for path=%s", path)
         return jsonify({"ok": False, "error": "Failed to read file"}), 500
@@ -328,20 +364,16 @@ def api_save():
     data = get_json_body()
     path = (data.get("path") or "").strip()
     content = data.get("content", "")
-
     if not path:
         return jsonify({"ok": False, "error": "Path required"}), 400
     if not isinstance(content, str):
         return jsonify({"ok": False, "error": "Invalid content"}), 400
-
     target = safe_path(path)
     if target.exists() and target.is_dir():
         return jsonify({"ok": False, "error": "Path is a directory"}), 400
-
     if not is_md_file(target):
         target = target.with_suffix(".md")
         path = str(target.relative_to(MD_ROOT)).replace("\\", "/")
-
     try:
         atomic_write(target, content)
         return jsonify({"ok": True, "path": path, "message": "Saved"})
@@ -357,26 +389,49 @@ def api_create():
     data = get_json_body()
     path = (data.get("path") or "").strip()
     is_dir = bool(data.get("is_dir", False))
-
+    template_id = (data.get("template") or "blank").strip()
     if not path:
         return jsonify({"ok": False, "error": "Path required"}), 400
-
     target = safe_path(path)
     if target.exists():
         return jsonify({"ok": False, "error": "Already exists"}), 400
-
     try:
         if is_dir:
             target.mkdir(parents=True, exist_ok=False)
         else:
             if not is_md_file(target):
                 target = target.with_suffix(".md")
-            atomic_write(target, f"# {target.stem}\n\n")
+            content = resolve_template_body(template_id, target.stem)
+            atomic_write(target, content)
         rel = str(target.relative_to(MD_ROOT)).replace("\\", "/")
         return jsonify({"ok": True, "path": rel})
     except Exception:
         log.exception("create failed for path=%s", path)
         return jsonify({"ok": False, "error": "Failed to create"}), 500
+
+
+@app.route("/api/config")
+@requires_auth
+def api_config():
+    folders = []
+    try:
+        for entry in sorted(MD_ROOT.iterdir(), key=lambda e: e.name.lower()):
+            if entry.is_dir() and not entry.name.startswith(".") and entry.name != TEMPLATES_DIR_NAME:
+                try:
+                    entry.resolve().relative_to(MD_ROOT)
+                except ValueError:
+                    continue
+                folders.append({"name": entry.name, "path": str(entry.relative_to(MD_ROOT)).replace("\\", "/")})
+    except OSError:
+        pass
+    return jsonify({
+        "ok": True,
+        "templates": list_templates(),
+        "folders": folders,
+        "root_label": MD_ROOT.name or str(MD_ROOT),
+        "default_template": os.environ.get("DEFAULT_TEMPLATE", "blank"),
+        "default_folder": os.environ.get("DEFAULT_FOLDER", ""),
+    })
 
 
 @app.route("/api/delete", methods=["POST"])
@@ -387,11 +442,9 @@ def api_delete():
     path = (data.get("path") or "").strip()
     if not path:
         return jsonify({"ok": False, "error": "Path required"}), 400
-
     target = safe_path(path)
     if target == MD_ROOT:
         return jsonify({"ok": False, "error": "Cannot delete root"}), 400
-
     try:
         if target.is_dir():
             if any(target.iterdir()):
@@ -415,27 +468,21 @@ def api_rename():
     data = get_json_body()
     old_path = (data.get("old_path") or "").strip()
     new_name = (data.get("new_name") or "").strip()
-
     if not old_path or not new_name:
         return jsonify({"ok": False, "error": "old_path and new_name required"}), 400
-
     new_name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", new_name).strip()
     if not new_name:
         return jsonify({"ok": False, "error": "Invalid name"}), 400
-
     old = safe_path(old_path)
     if not old.exists() or old == MD_ROOT:
         return jsonify({"ok": False, "error": "Not found"}), 404
-
     new = old.parent / new_name
     try:
         new.resolve().relative_to(MD_ROOT)
     except ValueError:
         return jsonify({"ok": False, "error": "Invalid target"}), 403
-
     if new.exists():
         return jsonify({"ok": False, "error": "Target already exists"}), 400
-
     try:
         old.rename(new)
         rel = str(new.relative_to(MD_ROOT)).replace("\\", "/")
@@ -448,7 +495,6 @@ def api_rename():
 @app.route("/view/<path:filepath>")
 @requires_auth
 def view_file(filepath):
-    """Server-side rendered view (fallback / shareable)."""
     target = safe_path(filepath)
     if not target.is_file() or not is_md_file(target):
         abort(404)
@@ -459,7 +505,6 @@ def view_file(filepath):
 
 @app.route("/health")
 def health():
-    # Do not leak storage path
     return jsonify({"status": "ok"})
 
 
