@@ -23,128 +23,66 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <!-- Font Awesome 4 (wajib untuk ikon toolbar EasyMDE: fa fa-bold, dll.) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
-  <!-- EasyMDE -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
   <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
-  <!-- marked + DOMPurify for client preview safety -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     :root { color-scheme: light dark; }
     body { font-family: Inter, system-ui, sans-serif; }
-
-    /* EasyMDE layout — toolbar always visible */
     #editor-wrap { display: flex; flex-direction: column; min-height: 0; }
     #editor-wrap.hidden { display: none !important; }
     .EasyMDEContainer {
-      display: flex !important;
-      flex-direction: column !important;
-      flex: 1 1 auto;
-      min-height: 0;
-      height: 100% !important;
-      border: none !important;
+      display: flex !important; flex-direction: column !important;
+      flex: 1 1 auto; min-height: 0; height: 100% !important; border: none !important;
     }
     .EasyMDEContainer .editor-toolbar {
-      flex: 0 0 auto !important;
-      display: block !important;
-      opacity: 1 !important;
-      visibility: visible !important;
-      height: auto !important;
-      min-height: 38px !important;
-      border: none !important;
-      border-bottom: 1px solid #e5e7eb !important;
-      background: #f8fafc !important;
-      padding: 6px 8px !important;
-      z-index: 5;
-      overflow: visible !important;
+      flex: 0 0 auto !important; display: flex !important; flex-wrap: wrap;
+      align-items: center; gap: 2px; opacity: 1 !important; visibility: visible !important;
+      min-height: 40px !important; border: none !important;
+      border-bottom: 1px solid #e5e7eb !important; background: #f1f5f9 !important;
+      padding: 6px 10px !important; z-index: 5;
     }
+    .EasyMDEContainer .editor-toolbar::before,
+    .EasyMDEContainer .editor-toolbar::after { display: none !important; content: none !important; }
     .EasyMDEContainer .editor-toolbar button {
-      display: inline-block !important;
-      color: #334155 !important;
-      opacity: 1 !important;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      margin: 0 1px;
-      padding: 0;
-      width: 30px;
-      height: 30px;
-      line-height: 30px;
-      text-align: center;
-      vertical-align: middle;
-      background: transparent;
-      cursor: pointer;
+      display: inline-flex !important; align-items: center; justify-content: center;
+      color: #475569 !important; opacity: 1 !important; border: none !important;
+      border-radius: 6px !important; margin: 0 !important; padding: 0 !important;
+      width: 32px !important; height: 32px !important; background: transparent !important;
+      cursor: pointer; transition: background .12s, color .12s;
     }
     .EasyMDEContainer .editor-toolbar button i.fa {
-      display: inline-block !important;
-      font-family: FontAwesome !important;
-      font-style: normal;
-      font-weight: normal;
-      font-size: 14px;
-      line-height: 1;
-      color: inherit;
-      opacity: 1 !important;
-      visibility: visible !important;
+      display: inline-block !important; font-family: FontAwesome !important;
+      font-size: 14px; color: inherit; opacity: 1 !important;
     }
     .EasyMDEContainer .editor-toolbar i.separator {
-      display: inline-block !important;
-      width: 0;
-      border-left: 1px solid #cbd5e1;
-      border-right: 1px solid #fff;
-      margin: 0 6px;
-      color: transparent;
+      display: inline-block !important; width: 1px !important; height: 18px !important;
+      margin: 0 6px !important; border: none !important; background: #cbd5e1 !important;
     }
-    .EasyMDEContainer .editor-toolbar button:hover,
-    .EasyMDEContainer .editor-toolbar button.active {
-      background: #e2e8f0 !important;
-      border-color: #cbd5e1 !important;
-    }
+    .EasyMDEContainer .editor-toolbar button:hover { background: #e2e8f0 !important; color: #0f172a !important; }
+    .EasyMDEContainer .editor-toolbar button.active { background: #0ea5e9 !important; color: #fff !important; }
     .EasyMDEContainer .CodeMirror {
-      flex: 1 1 auto !important;
-      height: auto !important;
-      min-height: 200px !important;
-      border: none !important;
-      background: transparent !important;
-      font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-size: 14px;
+      flex: 1 1 auto !important; height: auto !important; min-height: 200px !important;
+      border: none !important; background: transparent !important;
+      font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px;
     }
-    .EasyMDEContainer .CodeMirror-scroll {
-      min-height: 200px;
-    }
-    .EasyMDEContainer .editor-preview,
-    .EasyMDEContainer .editor-preview-side {
-      background: #fff;
-    }
-    .dark .EasyMDEContainer .editor-toolbar {
-      border-color: #374151 !important;
-      background: #1f2937 !important;
-    }
-    .dark .EasyMDEContainer .editor-toolbar button,
-    .dark .EasyMDEContainer .editor-toolbar i.separator {
-      color: #e5e7eb !important;
-    }
-    .dark .EasyMDEContainer .editor-toolbar button:hover,
-    .dark .EasyMDEContainer .editor-toolbar button.active {
-      background: #374151 !important;
-      border-color: #4b5563 !important;
-    }
+    .EasyMDEContainer .editor-statusbar { border-top: 1px solid #e5e7eb; color: #94a3b8; font-size: 11px; padding: 4px 12px; }
+    .dark .EasyMDEContainer .editor-toolbar { border-color: #374151 !important; background: #1e293b !important; }
+    .dark .EasyMDEContainer .editor-toolbar button { color: #cbd5e1 !important; }
+    .dark .EasyMDEContainer .editor-toolbar button:hover { background: #334155 !important; color: #f1f5f9 !important; }
+    .dark .EasyMDEContainer .editor-toolbar button.active { background: #0284c7 !important; color: #fff !important; }
+    .dark .EasyMDEContainer .editor-toolbar i.separator { background: #475569 !important; }
     .dark .EasyMDEContainer .CodeMirror { color: #e5e7eb; }
     .dark .EasyMDEContainer .editor-preview,
-    .dark .EasyMDEContainer .editor-preview-side {
-      background: #111827;
-      color: #e5e7eb;
-    }
-
+    .dark .EasyMDEContainer .editor-preview-side { background: #111827; color: #e5e7eb; }
     .prose pre { background: #1e293b; color: #e2e8f0; border-radius: 0.5rem; padding: 1rem; overflow-x: auto; }
     .prose code { font-family: 'JetBrains Mono', monospace; font-size: 0.875em; }
-    .prose table { border-collapse: collapse; width: 100%; }
-    .prose th, .prose td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; }
-    .dark .prose th, .dark .prose td { border-color: #374151; }
     .sidebar-item:hover { background: rgba(14,165,233,0.08); }
     .sidebar-item.active { background: rgba(14,165,233,0.15); color: #0284c7; }
     .dark .sidebar-item.active { color: #38bdf8; }
-    .resizer { width: 4px; cursor: col-resize; background: transparent; transition: background .15s; }
+    .resizer { width: 4px; cursor: col-resize; background: transparent; }
     .resizer:hover, .resizer.active { background: #0ea5e9; }
     .toast { animation: slideIn .25s ease; }
     @keyframes slideIn { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -164,175 +102,181 @@
         <span id="current-path" class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px] sm:max-w-md"></span>
       </div>
       <div class="flex items-center gap-1.5">
-        <button id="btn-new-file" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition" title="File baru">+ File</button>
-        <button id="btn-new-folder" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Folder baru">+ Folder</button>
-        <button id="btn-save" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40" disabled title="Simpan (Ctrl+S)">Simpan</button>
-        <button id="btn-theme" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Toggle tema">
+        <button id="btn-new-file" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition">+ File</button>
+        <button id="btn-new-folder" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition">+ Folder</button>
+        <button id="btn-save" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40" disabled>Simpan</button>
+        <button id="btn-settings" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Pengaturan">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+        <button id="btn-theme" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Tema">
           <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
           <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
         </button>
-        <a href="/logout" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition" title="Keluar">Keluar</a>
+        <a href="/logout" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition">Keluar</a>
       </div>
     </header>
-
     <div class="flex-1 flex overflow-hidden">
-      <aside id="sidebar" class="w-64 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col transition-all duration-200">
+      <aside id="sidebar" class="w-64 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col">
         <div class="p-2 border-b border-gray-100 dark:border-gray-700">
           <input id="search-input" type="text" placeholder="Cari file..." class="w-full px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500" />
         </div>
         <div id="file-list" class="flex-1 overflow-y-auto p-1 text-sm"></div>
-        <div class="p-2 border-t border-gray-100 dark:border-gray-700 text-[10px] text-gray-400 text-center">
-          Markdown Lite · ringan &amp; aman
-        </div>
+        <div class="p-2 border-t border-gray-100 dark:border-gray-700 text-[10px] text-gray-400 text-center">Markdown Lite · ringan &amp; aman</div>
       </aside>
-
       <div id="resizer" class="resizer hidden sm:block"></div>
-
       <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900">
         <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
-          <svg class="w-16 h-16 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           <p class="text-lg font-medium">Pilih atau buat file Markdown</p>
-          <p class="text-sm mt-1">Gunakan tombol + File di atas atau klik file di sidebar</p>
+          <p class="text-sm mt-1">Gunakan + File atau klik file di sidebar</p>
         </div>
-
-        <div id="editor-wrap" class="hidden flex-1 flex flex-col min-h-0">
-          <textarea id="editor"></textarea>
-        </div>
+        <div id="editor-wrap" class="hidden flex-1 flex flex-col min-h-0"><textarea id="editor"></textarea></div>
       </main>
     </div>
   </div>
-
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
-
   <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-4 p-5">
       <h3 id="modal-title" class="font-semibold text-lg mb-3"></h3>
-      <input id="modal-input" type="text" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 mb-4" />
+      <input id="modal-input" type="text" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 mb-3" />
+      <div id="modal-template-wrap" class="hidden mb-4">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Template</label>
+        <select id="modal-template" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm"></select>
+      </div>
       <div class="flex justify-end gap-2">
-        <button id="modal-cancel" class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Batal</button>
-        <button id="modal-ok" class="px-3 py-1.5 text-sm rounded-lg bg-brand-500 text-white hover:bg-brand-600">OK</button>
+        <button id="modal-cancel" class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600">Batal</button>
+        <button id="modal-ok" class="px-3 py-1.5 text-sm rounded-lg bg-brand-500 text-white">OK</button>
       </div>
     </div>
   </div>
-
+  <div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-lg">Pengaturan</h3>
+        <button id="settings-close" class="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">✕</button>
+      </div>
+      <div class="space-y-4 text-sm">
+        <div>
+          <label class="block font-medium mb-1">Template default (file baru)</label>
+          <select id="settings-template" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900"></select>
+          <p class="text-xs text-gray-400 mt-1">Custom: taruh .md di folder <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">_templates/</code></p>
+        </div>
+        <div>
+          <label class="block font-medium mb-1">Folder awal saat buka app</label>
+          <select id="settings-folder" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900">
+            <option value="">Root (semua folder)</option>
+          </select>
+          <p class="text-xs text-gray-400 mt-1">Storage: <span id="settings-root-label" class="font-mono">—</span></p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button id="settings-cancel" class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600">Batal</button>
+        <button id="settings-save" class="px-3 py-1.5 text-sm rounded-lg bg-brand-500 text-white">Simpan</button>
+      </div>
+    </div>
+  </div>
   <script>
-    let currentPath = '';
-    let currentDir = '';
-    let dirty = false;
-    let easyMDE = null;
-    let allItems = [];
-
-    function esc(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      })[c]);
-    }
-
+    let currentPath = '', currentDir = '', dirty = false, easyMDE = null, allItems = [];
+    let appConfig = { templates: [], folders: [], root_label: '', default_template: 'blank', default_folder: '' };
+    const LS_TEMPLATE = 'mdlite_default_template', LS_FOLDER = 'mdlite_default_folder';
+    function getPrefTemplate() { return localStorage.getItem(LS_TEMPLATE) || appConfig.default_template || 'blank'; }
+    function getPrefFolder() { return localStorage.getItem(LS_FOLDER) ?? appConfig.default_folder ?? ''; }
+    function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function initTheme() {
       const saved = localStorage.getItem('theme');
-      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches))
         document.documentElement.classList.add('dark');
-      }
     }
     document.getElementById('btn-theme').onclick = () => {
       document.documentElement.classList.toggle('dark');
       localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
     };
     initTheme();
-
     function toast(msg, type = 'info') {
       const el = document.createElement('div');
-      el.className = `toast px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white ${type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-emerald-500' : 'bg-gray-800'}`;
+      el.className = `toast px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white ${type==='error'?'bg-red-500':type==='success'?'bg-emerald-500':'bg-gray-800'}`;
       el.textContent = msg;
       document.getElementById('toast-container').appendChild(el);
       setTimeout(() => el.remove(), 2800);
     }
-
-    function showModal(title, placeholder, defaultVal = '') {
+    function showModal(title, placeholder, defaultVal = '', { showTemplate = false } = {}) {
       return new Promise(resolve => {
         const modal = document.getElementById('modal');
         const input = document.getElementById('modal-input');
+        const tplWrap = document.getElementById('modal-template-wrap');
+        const tplSel = document.getElementById('modal-template');
         document.getElementById('modal-title').textContent = title;
-        input.placeholder = placeholder;
-        input.value = defaultVal;
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        input.focus();
-        const ok = () => { cleanup(); resolve(input.value.trim()); };
+        input.placeholder = placeholder; input.value = defaultVal;
+        if (showTemplate) {
+          tplWrap.classList.remove('hidden');
+          tplSel.innerHTML = (appConfig.templates||[]).map(t =>
+            `<option value="${esc(t.id)}" ${t.id===getPrefTemplate()?'selected':''}>${esc(t.name)}</option>`).join('');
+        } else tplWrap.classList.add('hidden');
+        modal.classList.remove('hidden'); modal.classList.add('flex'); input.focus();
+        const ok = () => { const name = input.value.trim(); const template = showTemplate ? tplSel.value : null; cleanup(); resolve(name ? { name, template } : null); };
         const cancel = () => { cleanup(); resolve(null); };
         function cleanup() {
-          modal.classList.add('hidden');
-          modal.classList.remove('flex');
+          modal.classList.add('hidden'); modal.classList.remove('flex'); tplWrap.classList.add('hidden');
           document.getElementById('modal-ok').onclick = null;
           document.getElementById('modal-cancel').onclick = null;
           input.onkeydown = null;
         }
         document.getElementById('modal-ok').onclick = ok;
         document.getElementById('modal-cancel').onclick = cancel;
-        input.onkeydown = e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') cancel(); };
+        input.onkeydown = e => { if (e.key==='Enter') ok(); if (e.key==='Escape') cancel(); };
       });
     }
-
     async function api(url, opts = {}) {
-      const res = await fetch(url, {
-        headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-        credentials: 'same-origin',
-        ...opts
-      });
-      if (res.status === 401) {
-        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
-        return { ok: false, error: 'Unauthorized' };
-      }
+      const res = await fetch(url, { headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) }, credentials: 'same-origin', ...opts });
+      if (res.status === 401) { window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname); return { ok:false, error:'Unauthorized' }; }
       return res.json();
     }
-
+    async function loadConfig() {
+      const data = await api('/api/config');
+      if (data.ok) appConfig = data;
+    }
+    function openSettings() {
+      const modal = document.getElementById('settings-modal');
+      document.getElementById('settings-root-label').textContent = appConfig.root_label || 'data';
+      document.getElementById('settings-template').innerHTML = (appConfig.templates||[]).map(t =>
+        `<option value="${esc(t.id)}" ${t.id===getPrefTemplate()?'selected':''}>${esc(t.name)}${t.source==='custom'?' (custom)':''}</option>`).join('');
+      document.getElementById('settings-folder').innerHTML = '<option value="">Root (semua folder)</option>' +
+        (appConfig.folders||[]).map(f => `<option value="${esc(f.path)}" ${f.path===getPrefFolder()?'selected':''}>${esc(f.name)}</option>`).join('');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+    }
+    function closeSettings() {
+      const modal = document.getElementById('settings-modal');
+      modal.classList.add('hidden'); modal.classList.remove('flex');
+    }
     async function loadList(dir = '') {
       currentDir = dir;
       const data = await api(`/api/list?path=${encodeURIComponent(dir)}`);
       if (!data.ok) { toast(data.error || 'Gagal load', 'error'); return; }
-      allItems = data.items;
-      renderList(allItems);
+      allItems = data.items; renderList(allItems);
     }
-
     function renderList(items) {
       const container = document.getElementById('file-list');
       const q = document.getElementById('search-input').value.toLowerCase();
       const filtered = q ? items.filter(i => i.name.toLowerCase().includes(q)) : items;
-
       let html = '';
       if (currentDir) {
-        const parent = currentDir.split('/').slice(0, -1).join('/');
-        html += `<div class="sidebar-item flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-gray-500" data-action="up" data-path="${esc(parent)}">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          ..
-        </div>`;
+        const parent = currentDir.split('/').slice(0,-1).join('/');
+        html += `<div class="sidebar-item flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-gray-500" data-action="up" data-path="${esc(parent)}">..</div>`;
       }
-
       for (const item of filtered) {
         const isActive = item.path === currentPath;
         const safePath = esc(item.path);
         const icon = item.is_dir
           ? `<svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>`
           : `<svg class="w-4 h-4 text-brand-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
-        html += `<div class="sidebar-item group flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer ${isActive ? 'active' : ''}" data-path="${safePath}" data-isdir="${item.is_dir}">
-          ${icon}
-          <span class="truncate flex-1">${esc(item.name)}</span>
-          <button class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500" data-action="delete" data-path="${safePath}" title="Hapus">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>`;
+        html += `<div class="sidebar-item group flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer ${isActive?'active':''}" data-path="${safePath}" data-isdir="${item.is_dir}">${icon}<span class="truncate flex-1">${esc(item.name)}</span><button class="opacity-0 group-hover:opacity-100 p-0.5 rounded text-red-500" data-action="delete" data-path="${safePath}" title="Hapus">×</button></div>`;
       }
       container.innerHTML = html || '<p class="text-center text-gray-400 py-6 text-xs">Kosong</p>';
-
       container.querySelectorAll('[data-path]').forEach(el => {
         el.addEventListener('click', e => {
           if (e.target.closest('[data-action="delete"]')) return;
-          const path = el.dataset.path;
-          const isDir = el.dataset.isdir === 'true';
-          const action = el.dataset.action;
+          const path = el.dataset.path, isDir = el.dataset.isdir === 'true', action = el.dataset.action;
           if (action === 'up') { loadList(path); return; }
-          if (isDir) loadList(path);
-          else openFile(path);
+          if (isDir) loadList(path); else openFile(path);
         });
       });
       container.querySelectorAll('[data-action="delete"]').forEach(btn => {
@@ -346,133 +290,83 @@
         });
       });
     }
-
     document.getElementById('search-input').oninput = () => renderList(allItems);
-
     function initEditor() {
       if (easyMDE) return;
       easyMDE = new EasyMDE({
-        element: document.getElementById('editor'),
-        autofocus: true,
-        spellChecker: false,
-        autoDownloadFontAwesome: false,
-        status: ['lines', 'words', 'cursor'],
-        minHeight: '300px',
-        toolbar: [
-          'bold', 'italic', 'strikethrough', 'heading', '|',
-          'quote', 'unordered-list', 'ordered-list', '|',
-          'link', 'image', 'table', 'code', 'horizontal-rule', '|',
-          'preview', 'side-by-side', 'fullscreen', '|',
-          'guide'
-        ],
+        element: document.getElementById('editor'), autofocus: true, spellChecker: false,
+        autoDownloadFontAwesome: false, status: ['lines','words','cursor'], minHeight: '300px',
+        toolbar: ['bold','italic','heading','|','quote','unordered-list','ordered-list','|','link','image','table','code','|','preview','side-by-side','fullscreen'],
         placeholder: 'Tulis Markdown di sini...',
-        renderingConfig: { singleLineBreaks: false, codeSyntaxHighlighting: true },
         previewRender: (text) => DOMPurify.sanitize(marked.parse(text || '')),
       });
-      easyMDE.codemirror.on('change', () => {
-        dirty = true;
-        document.getElementById('btn-save').disabled = false;
-      });
-      setTimeout(() => {
-        if (easyMDE && easyMDE.codemirror) easyMDE.codemirror.refresh();
-      }, 50);
+      easyMDE.codemirror.on('change', () => { dirty = true; document.getElementById('btn-save').disabled = false; });
+      setTimeout(() => { if (easyMDE && easyMDE.codemirror) easyMDE.codemirror.refresh(); }, 50);
     }
-
     async function openFile(path) {
       if (dirty && !confirm('Perubahan belum disimpan. Lanjutkan?')) return;
       const data = await api(`/api/read?path=${encodeURIComponent(path)}`);
       if (!data.ok) { toast(data.error || 'Gagal baca', 'error'); return; }
-
       currentPath = path;
       document.getElementById('current-path').textContent = path;
       document.getElementById('empty-state').classList.add('hidden');
       document.getElementById('editor-wrap').classList.remove('hidden');
-
-      initEditor();
-      easyMDE.value(data.content);
-      dirty = false;
-      document.getElementById('btn-save').disabled = true;
-      renderList(allItems);
+      initEditor(); easyMDE.value(data.content); dirty = false;
+      document.getElementById('btn-save').disabled = true; renderList(allItems);
     }
-
     function closeFile() {
-      currentPath = '';
-      dirty = false;
+      currentPath = ''; dirty = false;
       document.getElementById('current-path').textContent = '';
       document.getElementById('empty-state').classList.remove('hidden');
       document.getElementById('editor-wrap').classList.add('hidden');
       document.getElementById('btn-save').disabled = true;
       if (easyMDE) easyMDE.value('');
     }
-
     async function saveFile() {
       if (!currentPath || !easyMDE) return;
-      const content = easyMDE.value();
-      const res = await api('/api/save', {
-        method: 'POST',
-        body: JSON.stringify({ path: currentPath, content })
-      });
-      if (res.ok) {
-        dirty = false;
-        document.getElementById('btn-save').disabled = true;
-        toast('Tersimpan', 'success');
-      } else toast(res.error || 'Gagal simpan', 'error');
+      const res = await api('/api/save', { method: 'POST', body: JSON.stringify({ path: currentPath, content: easyMDE.value() }) });
+      if (res.ok) { dirty = false; document.getElementById('btn-save').disabled = true; toast('Tersimpan', 'success'); }
+      else toast(res.error || 'Gagal simpan', 'error');
     }
-
     document.getElementById('btn-new-file').onclick = async () => {
-      const name = await showModal('File baru', 'nama-file.md');
-      if (!name) return;
-      const path = currentDir ? `${currentDir}/${name}` : name;
-      const res = await api('/api/create', { method: 'POST', body: JSON.stringify({ path, is_dir: false }) });
+      const result = await showModal('File baru', 'nama-file.md', '', { showTemplate: true });
+      if (!result) return;
+      const path = currentDir ? `${currentDir}/${result.name}` : result.name;
+      const res = await api('/api/create', { method: 'POST', body: JSON.stringify({ path, is_dir: false, template: result.template || getPrefTemplate() }) });
       if (res.ok) { toast('File dibuat', 'success'); loadList(currentDir); openFile(res.path); }
       else toast(res.error || 'Gagal', 'error');
     };
-
     document.getElementById('btn-new-folder').onclick = async () => {
-      const name = await showModal('Folder baru', 'nama-folder');
-      if (!name) return;
-      const path = currentDir ? `${currentDir}/${name}` : name;
+      const result = await showModal('Folder baru', 'nama-folder');
+      if (!result) return;
+      const path = currentDir ? `${currentDir}/${result.name}` : result.name;
       const res = await api('/api/create', { method: 'POST', body: JSON.stringify({ path, is_dir: true }) });
       if (res.ok) { toast('Folder dibuat', 'success'); loadList(currentDir); }
       else toast(res.error || 'Gagal', 'error');
     };
-
     document.getElementById('btn-save').onclick = saveFile;
-
-    document.addEventListener('keydown', e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        saveFile();
-      }
-    });
-
-    document.getElementById('btn-toggle-sidebar').onclick = () => {
-      document.getElementById('sidebar').classList.toggle('hidden');
+    document.getElementById('btn-settings').onclick = openSettings;
+    document.getElementById('settings-close').onclick = closeSettings;
+    document.getElementById('settings-cancel').onclick = closeSettings;
+    document.getElementById('settings-save').onclick = () => {
+      localStorage.setItem(LS_TEMPLATE, document.getElementById('settings-template').value);
+      localStorage.setItem(LS_FOLDER, document.getElementById('settings-folder').value);
+      closeSettings(); toast('Pengaturan disimpan', 'success');
     };
-
+    document.getElementById('settings-modal').addEventListener('click', e => { if (e.target.id === 'settings-modal') closeSettings(); });
+    document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveFile(); } });
+    document.getElementById('btn-toggle-sidebar').onclick = () => document.getElementById('sidebar').classList.toggle('hidden');
     (function() {
-      const resizer = document.getElementById('resizer');
-      const sidebar = document.getElementById('sidebar');
+      const resizer = document.getElementById('resizer'), sidebar = document.getElementById('sidebar');
       let startX, startW;
       resizer.addEventListener('mousedown', e => {
-        startX = e.clientX;
-        startW = sidebar.offsetWidth;
-        resizer.classList.add('active');
-        const onMove = e => {
-          const w = Math.min(Math.max(startW + e.clientX - startX, 180), 420);
-          sidebar.style.width = w + 'px';
-        };
-        const onUp = () => {
-          resizer.classList.remove('active');
-          document.removeEventListener('mousemove', onMove);
-          document.removeEventListener('mouseup', onUp);
-        };
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
+        startX = e.clientX; startW = sidebar.offsetWidth; resizer.classList.add('active');
+        const onMove = e => { sidebar.style.width = Math.min(Math.max(startW + e.clientX - startX, 180), 420) + 'px'; };
+        const onUp = () => { resizer.classList.remove('active'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+        document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
       });
     })();
-
-    loadList();
+    (async () => { await loadConfig(); loadList(getPrefFolder() || ''); })();
   </script>
 </body>
 </html>
